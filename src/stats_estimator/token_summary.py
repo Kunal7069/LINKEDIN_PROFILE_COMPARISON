@@ -68,7 +68,7 @@ Generate an **Engagement Insights** report with these sections:
 - **Key Observations** (4–5 bullet points): Compare video, post length, content types, time/day engagement, and trends.
 - **Timing Analysis** (1 paragraph): Highlight best-performing days and hours for the competitor and what it suggests.
 - **Engagement Tactics** (5–6 bullet points): If not explicitly given, infer them from patterns. Use insights like hashtag use, comment timing, post structure, etc.
-
+Use second-person throughout. You = profile1, your competitor = profile2.
 Keep the style clean, crisp, and insightful like an executive dashboard summary.
 """
 
