@@ -191,7 +191,48 @@ class PostStats:
             bucket: round((value / total_engagement) * 100, 2)
             for bucket, value in buckets.items()
         }
+    
+    def get_reshare_based_engagement_percentage(self, post_data, followers):
+        """
+        Returns normalized engagement percentage based on whether a post is reshared or original.
+        Engagement = Likes + 2 × Comments
+        Normalized Engagement = (Engagement / Followers) × 1000
+        Output is % of total normalized engagement for 'reshared' and 'original' posts.
+        """
+        if not followers or followers <= 0:
+            raise ValueError("Follower count must be greater than 0")
 
+        buckets = {
+            "reshared": 0,
+            "original": 0
+        }
+
+        for post in post_data:
+            try:
+                likes = post.get("totalreactions", 0)
+                comments = post.get("totalcomments", 0)
+                reshared = post.get("reshared", "no").lower()
+
+                engagement = likes + (2 * comments)
+                normalized = (engagement / followers) * 1000
+
+                if reshared == "yes":
+                    buckets["reshared"] += normalized
+                else:
+                    buckets["original"] += normalized
+
+            except Exception as e:
+                print(f"Error processing post: {e}")
+
+        total_engagement = sum(buckets.values())
+
+        if total_engagement == 0:
+            return {bucket: 0.0 for bucket in buckets}
+
+        return {
+            bucket: round((value / total_engagement) * 100, 2)
+            for bucket, value in buckets.items()
+        }
 
     def get_time_slot(self,hour, minute):
         """Returns a time bucket label based on hour and minute"""

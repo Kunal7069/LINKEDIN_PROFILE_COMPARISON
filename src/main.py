@@ -10,6 +10,7 @@ from math import ceil
 from typing import Dict, Any
 from database.main import services
 from stats_estimator.token_summary import OpenAiTokenizer
+from stats_estimator.content_score import ContentScore
 import asyncio
 import json
 
@@ -25,12 +26,12 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers including Authorization
 )
 
-print("✅ This is the correct FastAPI file running.")
 RAPID_API_KEY = os.getenv("RAPID_API_KEY")
 OPEN_AI_KEY = os.getenv("OPEN_AI_KEY")
 
 data_fetcher = LinkedinPostFetcher(RAPID_API_KEY)
 openaitokenizer = OpenAiTokenizer(OPEN_AI_KEY)
+contentscore = ContentScore()
 
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
@@ -61,7 +62,22 @@ def get_profile_analysis(request: PostRequest):
     data_1 = data_fetcher.get_profile_analysis(request.username_1, request.limit, request.caching)
     data_2 = data_fetcher.get_profile_analysis(request.username_2, request.limit, request.caching)
     result = {"profile1": data_1, "profile2":data_2}
-    return {"profile1": data_1, "profile2":data_2}
+    executive_summary = openaitokenizer.get_executive_insights(result)
+    
+    filtered_result = {}
+
+    for profile_key, profile_value in result.items():
+        filtered_result[profile_key] = {
+            "profile_data": profile_value.get("profile_data", {}),
+            "engagement_analysis": profile_value.get("engagement_analysis", {})
+        }
+    engagement_summary = openaitokenizer.get_engagement_insights(filtered_result)
+    content_score = contentscore.calculate_scores(result)
+    return {"profile1": data_1, "profile2":data_2,
+            "executive_summary":executive_summary,
+            "engagement_summary":engagement_summary,
+            "content_score":content_score
+            }
 
 @app.post("/calculate_summary_credits", dependencies=[Depends(verify_token)])
 def calculate_summary_credits(request: PostRequest):
@@ -111,9 +127,6 @@ def executive_summary(request: ProfileComparisonRequest):
     return {"result":result}
 
 
-# @app.post("/engagement_summary", dependencies=[Depends(verify_token)])
-# def engagement_summary(request: ProfileComparisonRequest):
-#     return {"tes": 4}
 
     
 

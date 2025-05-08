@@ -3,11 +3,22 @@ import json
 import re
 from settings.rapid_api_management import rapid_api_management
 from stats_estimator.content_summary import ContentSummarizer
+from stats_estimator.token_summary import OpenAiTokenizer
 from stats_estimator.engagement_analysis import PostStats
+from stats_estimator.content_score import ContentScore
 from database.main import services
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+OPEN_AI_KEY = os.getenv("OPEN_AI_KEY")
+
 content_summrizer = ContentSummarizer()
 posts_stats = PostStats()
-
+openai=OpenAiTokenizer(OPEN_AI_KEY)
+contentscore= ContentScore()
 class LinkedinPostFetcher:
     def __init__(self, rapidapi_key, rapidapi_host=rapid_api_management.BASE_URL):
         self.rapidapi_key = rapidapi_key
@@ -53,9 +64,10 @@ class LinkedinPostFetcher:
                             "original_post_text": post.get("resharedPost", {}).get("text", "No original post text available"),
                             "video": post.get("video") or [],
                             "documents":  len(documents) if isinstance(documents, dict) else 0,
-                            "polls": len(polls) if isinstance(polls, dict) else 0
+                            "polls": len(polls) if isinstance(polls, dict) else 0,
+                            "reshared": "yes" if "resharedPost" in post else "no"
                         }
-                        
+                       
                         if len(temporary_data['images'])>0:
                             temporary_data['is_images']="yes"
                         else:
@@ -80,8 +92,10 @@ class LinkedinPostFetcher:
                             temporary_data["is_text"] = "yes"
                         else:
                             temporary_data["is_text"] = "no"
-                                                
-                        data.append({**temporary_data})
+                        
+                        if temporary_data['reshared']=="no":
+                            data.append({**temporary_data})
+                            print(temporary_data)
                 
                 # if caching == "no":
                 #     services['post_service'].save_posts(data,username)
@@ -95,11 +109,13 @@ class LinkedinPostFetcher:
                                     "hour_wise":posts_stats.get_hourly_normalized_engagement(data,profile_data['follower_count']),
                                     "month_wise":posts_stats.get_monthly_normalized_engagement(data,profile_data['follower_count']),
                                     "post_length_wise":posts_stats.get_length_based_engagement_percentage(data,profile_data['follower_count']),
-                                    "content_type_wise":posts_stats.get_content_type_engagement_percentage(data,profile_data['follower_count'])
+                                    "content_type_wise":posts_stats.get_content_type_engagement_percentage(data,profile_data['follower_count']),
+                                    # "shared_wise" : posts_stats.get_reshare_based_engagement_percentage(data,profile_data['follower_count'])
 }
                 writing_style = content_summrizer.get_writing_style_metrics(data)
-                return {"profile_data":profile_data,"posting_frequency_data":posting_frequency_data,"content_type_usage":content_type_usage,"post_stats":stats,
+                result = {"profile_data":profile_data,"posting_frequency_data":posting_frequency_data,"content_type_usage":content_type_usage,"post_stats":stats,
                         "engagement_analysis":engagement_analysis,"writing_style":writing_style}
+                return result
             else:
                 return {"profile_data":profile_data,"posting_frequency_data":{},"content_type_usage":{},"post_stats":{},
                         "engagement_analysis":{},"writing_style":{}}
